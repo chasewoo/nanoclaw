@@ -51,7 +51,6 @@ export interface NewMessage {
   timestamp: string;
   is_from_me?: boolean;
   is_bot_message?: boolean;
-  thread_ts?: string;
 }
 
 export interface ScheduledTask {
@@ -84,7 +83,7 @@ export interface TaskRunLog {
 export interface Channel {
   name: string;
   connect(): Promise<void>;
-  sendMessage(jid: string, text: string, threadTs?: string): Promise<void>;
+  sendMessage(jid: string, text: string): Promise<void>;
   isConnected(): boolean;
   ownsJid(jid: string): boolean;
   disconnect(): Promise<void>;

@@ -120,15 +120,10 @@ export class SlackChannel implements Channel {
         }
       }
 
-      // Determine thread_ts for thread-aware routing:
-      // - If Slack event has thread_ts, this message belongs to a thread
-      // - If no thread_ts, this is a top-level channel message (thread_ts=undefined)
-      const slackThreadTs = (msg as GenericMessageEvent).thread_ts;
-
       // Track the user message ts for thread replies (use thread_ts if already in a thread)
       if (!isBotMessage) {
-        const replyTs = slackThreadTs || msg.ts;
-        this.lastUserMessageTs.set(jid, replyTs);
+        const threadTs = (msg as GenericMessageEvent).thread_ts || msg.ts;
+        this.lastUserMessageTs.set(jid, threadTs);
       }
 
       this.opts.onMessage(jid, {
@@ -140,7 +135,6 @@ export class SlackChannel implements Channel {
         timestamp,
         is_from_me: isBotMessage,
         is_bot_message: isBotMessage,
-        thread_ts: slackThreadTs,
       });
     });
   }
@@ -171,7 +165,7 @@ export class SlackChannel implements Channel {
     await this.syncChannelMetadata();
   }
 
-  async sendMessage(jid: string, text: string, threadTs?: string): Promise<void> {
+  async sendMessage(jid: string, text: string): Promise<void> {
     const channelId = jid.replace(/^slack:/, '');
 
     if (!this.connected) {
@@ -184,23 +178,22 @@ export class SlackChannel implements Channel {
     }
 
     try {
-      // Use explicitly provided threadTs (thread-aware routing), fall back to
-      // lastUserMessageTs map (legacy/piping path)
-      const resolvedThreadTs = threadTs ?? this.lastUserMessageTs.get(jid);
+      // Reply in the thread of the last user message (if any)
+      const threadTs = this.lastUserMessageTs.get(jid);
 
       // Slack limits messages to ~4000 characters; split if needed
       if (text.length <= MAX_MESSAGE_LENGTH) {
         await this.app.client.chat.postMessage({
           channel: channelId,
           text,
-          ...(resolvedThreadTs ? { thread_ts: resolvedThreadTs } : {}),
+          ...(threadTs ? { thread_ts: threadTs } : {}),
         });
       } else {
         for (let i = 0; i < text.length; i += MAX_MESSAGE_LENGTH) {
           await this.app.client.chat.postMessage({
             channel: channelId,
             text: text.slice(i, i + MAX_MESSAGE_LENGTH),
-            ...(resolvedThreadTs ? { thread_ts: resolvedThreadTs } : {}),
+            ...(threadTs ? { thread_ts: threadTs } : {}),
           });
         }
       }
