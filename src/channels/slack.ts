@@ -171,7 +171,7 @@ export class SlackChannel implements Channel {
     await this.syncChannelMetadata();
   }
 
-  async sendMessage(jid: string, text: string, threadTs?: string | null): Promise<void> {
+  async sendMessage(jid: string, text: string, threadTs?: string): Promise<void> {
     const channelId = jid.replace(/^slack:/, '');
 
     if (!this.connected) {
@@ -184,14 +184,9 @@ export class SlackChannel implements Channel {
     }
 
     try {
-      // Thread routing semantics:
-      // - threadTs = "1234.5678" → reply in that specific thread
-      // - threadTs = null        → explicitly channel-level (no thread), do NOT fallback
-      // - threadTs = undefined   → legacy/MCP path, fall back to lastUserMessageTs
-      const resolvedThreadTs =
-        threadTs === null
-          ? undefined                                    // explicitly no thread
-          : threadTs ?? this.lastUserMessageTs.get(jid); // string or fallback
+      // Use explicitly provided threadTs (thread-aware routing), fall back to
+      // lastUserMessageTs map (legacy/piping path)
+      const resolvedThreadTs = threadTs ?? this.lastUserMessageTs.get(jid);
 
       // Slack limits messages to ~4000 characters; split if needed
       if (text.length <= MAX_MESSAGE_LENGTH) {

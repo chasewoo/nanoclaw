@@ -236,7 +236,7 @@ async function processThreadGroup(
   group: RegisteredGroup,
   channel: Channel,
   threadMessages: NewMessage[],
-  threadTs: string | null,
+  threadTs: string | undefined,
 ): Promise<{ hadError: boolean; outputSentToUser: boolean }> {
   const isMainGroup = group.isMain === true;
 
@@ -363,8 +363,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   // Process each thread group independently
   for (const [threadKey, threadMessages] of threadGroups) {
     // threadKey is either a Slack thread_ts or '__channel__' for channel-level messages
-    // null = explicitly no thread (channel-level); string = specific thread
-    const threadTs = threadKey === '__channel__' ? null : threadKey;
+    const threadTs = threadKey === '__channel__' ? undefined : threadKey;
 
     const { hadError, outputSentToUser } = await processThreadGroup(
       chatJid,
