@@ -220,40 +220,11 @@ export class SlackChannel implements Channel {
     await this.app.stop();
   }
 
-  // Slack bots can't show native typing dots, so we post a temporary
-  // "thinking" message and delete it when the agent responds.
-  private thinkingMessages = new Map<string, string>(); // jid → message ts
-
-  async setTyping(jid: string, isTyping: boolean): Promise<void> {
-    const channelId = jid.replace(/^slack:/, '');
-    try {
-      if (isTyping) {
-        // Post a temporary "thinking" message
-        if (!this.thinkingMessages.has(jid)) {
-          const lastTs = this.lastUserMessageTs.get(jid);
-          const res = await this.app.client.chat.postMessage({
-            channel: channelId,
-            text: ':hourglass_flowing_sand: _正在思考..._',
-            ...(lastTs ? { thread_ts: lastTs } : {}),
-          });
-          if (res.ts) {
-            this.thinkingMessages.set(jid, res.ts);
-          }
-        }
-      } else {
-        // Delete the "thinking" message
-        const ts = this.thinkingMessages.get(jid);
-        if (ts) {
-          await this.app.client.chat.delete({
-            channel: channelId,
-            ts,
-          }).catch(() => {}); // ignore if already deleted
-          this.thinkingMessages.delete(jid);
-        }
-      }
-    } catch (err) {
-      logger.debug({ jid, err }, 'setTyping failed');
-    }
+  // Slack does not expose a typing indicator API for bots.
+  // This no-op satisfies the Channel interface so the orchestrator
+  // doesn't need channel-specific branching.
+  async setTyping(_jid: string, _isTyping: boolean): Promise<void> {
+    // no-op: Slack Bot API has no typing indicator endpoint
   }
 
   /**
